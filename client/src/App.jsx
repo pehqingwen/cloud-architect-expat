@@ -1,11 +1,8 @@
 import { useState } from 'react'
-import bedding from '/bedding.jpg'
-import feed from '/feed.jpeg'
 import './App.css'
 import { Routes, Route } from 'react-router-dom'
 import Membership from './pages/membership.jsx'
 import { useNavigate } from "react-router-dom";
-import { Link } from 'react-router-dom'
 
 function App() {
 
@@ -154,7 +151,7 @@ function App() {
                       <div className="bg-white rounded-2xl p-4 gap-2 justify-center shadow-md flex flex-col items-center">
 
                         <img
-                          src={bedding}
+                          src="https://hamster-supplies-assets.s3.us-east-1.amazonaws.com/bedding.jpg"
                           alt="Bedding"
                           className="w-8 h-8 object-cover rounded-md"
                           loading="lazy"
@@ -179,7 +176,7 @@ function App() {
                       <div className="bg-white rounded-2xl p-4 shadow-md flex flex-col items-center">
                         <div className="w-28 h-28 rounded-xl overflow-hidden bg-gray-50 flex items-center justify-center mb-3">
                           <img
-                            src={feed}
+                            src="https://hamster-supplies-assets.s3.us-east-1.amazonaws.com/feed.jpeg"
                             alt="Feed"
                             className="w-full h-full object-cover block"
                             loading="lazy"
