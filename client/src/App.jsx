@@ -36,9 +36,10 @@ function App() {
     };
 
     try {
-      const res = await fetch("http://localhost:5000/api/order", {
+      const res = await fetch("/api/orders", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        credentials: "include",
         body: JSON.stringify(orderData),
       });
 

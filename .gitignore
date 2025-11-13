@@ -31,6 +31,8 @@ server/node_modules/
 # environment files
 .env
 server/.env
+**/.env
+.env.api
 
 # build output
 dist/

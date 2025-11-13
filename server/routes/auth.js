@@ -1,0 +1,117 @@
+import bcrypt from "bcrypt";
+import crypto from "crypto";
+import User from "../models/User.js";
+import Order from "../models/Order.js";
+import { S3Client } from "@aws-sdk/client-s3";
+import { Router } from "express";
+import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
+
+const router = Router();
+
+/**
+ * Client flow (recommended):
+ * 1) Upload image to S3 with a presigned POST → you get `key`
+ * 2) Call this endpoint with { email, password, avatarKey: key }
+ */
+
+// S3 client reads region & creds from env
+const s3 = new S3Client({ region: process.env.AWS_REGION });
+
+/**
+ * Get a presigned POST so the browser can upload the avatar directly to S3.
+ * Body: { email, fileName, contentType }
+ * Returns: { url, fields, key }
+ */
+router.post("/avatar/presign", async (req, res) => {
+    try {
+        const { email, fileName, contentType } = req.body || {};
+        if (!email || !fileName || !contentType) {
+            return res.status(400).send("email, fileName, contentType required");
+        }
+
+        // Allowlist — add/remove types you want to accept
+        const ALLOWED = ["image/jpeg", "image/png", "image/webp"];
+        if (!ALLOWED.includes(contentType)) {
+            return res.status(415).send("Unsupported image type");
+        }
+
+        // Generate a safe, unique key under avatars/
+        const ext = (fileName.split(".").pop() || "jpg").toLowerCase();
+        const emailHash = crypto.createHash("sha256").update(String(email).toLowerCase()).digest("hex").slice(0, 12);
+        const key = `avatars/${emailHash}-${Date.now()}.${ext}`;
+
+        // Create a short-lived presigned POST with constraints
+        const { url, fields } = await createPresignedPost(s3, {
+            Bucket: process.env.S3_BUCKET,
+            Key: key,
+            Fields: {},
+            Conditions: [
+                ["starts-with", "$Content-Type", "image/"],      // more tolerant
+                ["content-length-range", 0, 5 * 1024 * 1024],    // <= 5MB
+                ["starts-with", "$key", "avatars/"]              // enforce prefix
+            ],
+            Expires: 60, // seconds
+        });
+
+        res.json({ url, fields, key });
+    } catch (err) {
+        console.error("[avatar/presign] error:", err);
+        res.status(500).send(err?.message || "Failed to create presigned post");
+    }
+}); 
+
+/**
+ * Signup (after upload succeeds)
+ * Body: { email, password, avatarKey? }
+ */
+router.post("/signup", async (req, res) => {
+    try {
+        const { email, password, avatarKey } = req.body || {};
+        if (!email || !password) {
+            return res.status(400).json({ message: "email & password required" });
+        }
+
+        const existing = await User.findOne({ email: email.toLowerCase() });
+        if (existing) return res.status(409).json({ message: "Email already registered" });
+
+        const passwordHash = await bcrypt.hash(password, 12);
+
+        const user = await User.create({
+            email: email.toLowerCase(),
+            passwordHash,
+            avatarKey: avatarKey || undefined,
+        });
+
+        res.status(201).json({ message: "User created successfully!", userId: user._id });
+    } catch (err) {
+        console.error("[signup] error:", err);
+        res.status(500).json({ message: "Error creating membership." });
+    }
+});
+
+
+router.post("/orders", async (req, res) => {
+    try {
+        const { name, email, address, bedding, feed } = req.body || {};
+
+        if (!name || !email || !address) {
+            return res.status(400).json({ message: "name, email, and address are required" });
+        }
+
+        await Order.create({
+            name,
+            email: email.toLowerCase(),
+            address,
+            bedding,
+            feed,
+        });
+
+        res.status(201).json({ message: "New order created successfully!" });
+    } catch (err) {
+        console.error("[orders] creation error:", err);
+        res.status(500).json({ message: "Error creating order." });
+    }
+});
+
+
+export default router;

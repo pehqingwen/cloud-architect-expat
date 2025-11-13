@@ -1,0 +1,43 @@
+# .github/workflows/build.yml
+name: Build & Push Images
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write     # needed to push to GHCR
+    strategy:
+      matrix:
+        svc: [ "server", "client" ]   # must match your folder names
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Login to GHCR using the workflow token
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Optional: set a short SHA for prettier tags
+      - name: Set SHORT_SHA
+        run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+      # Build & push in one go (uses Dockerfile in each folder)
+      - name: Build and Push ${{ matrix.svc }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ./${{ matrix.svc }}     # ./server or ./client
+          push: true
+          tags: |
+            ghcr.io/pehqingwen/cloud-architect-expat:${{ matrix.svc }}-sha-${{ github.sha }}
+            ghcr.io/pehqingwen/cloud-architect-expat:${{ matrix.svc }}-sha-${{ env.SHORT_SHA }}
+          # If your Dockerfile isn't named 'Dockerfile' or isn't in that folder:
+          # file: ./${{ matrix.svc }}/Dockerfile
