@@ -22,11 +22,11 @@ const s3 = new S3Client({ region: process.env.AWS_REGION });
  * Body: { email, fileName, contentType }
  * Returns: { url, fields, key }
  */
-router.post("/avatar/presign", async (req, res) => {
+router.post("/auth/avatar/presign", async (req, res, next) => {
     try {
         const { email, fileName, contentType } = req.body || {};
         if (!email || !fileName || !contentType) {
-            return res.status(400).send("email, fileName, contentType required");
+            return res.status(400).json({ message: "email, fileName, contentType are required" });
         }
 
         // Allowlist — add/remove types you want to accept
@@ -38,13 +38,16 @@ router.post("/avatar/presign", async (req, res) => {
         // Generate a safe, unique key under avatars/
         const ext = (fileName.split(".").pop() || "jpg").toLowerCase();
         const emailHash = crypto.createHash("sha256").update(String(email).toLowerCase()).digest("hex").slice(0, 12);
-        const key = `avatars/${emailHash}-${Date.now()}.${ext}`;
+        const key = `avatars/${encodeURIComponent(email)}/${Date.now()}-${fileName}`;
 
         // Create a short-lived presigned POST with constraints
         const { url, fields } = await createPresignedPost(s3, {
             Bucket: process.env.S3_BUCKET,
             Key: key,
-            Fields: {},
+            Fields: {
+                key,
+                "Content-Type": contentType,
+            },
             Conditions: [
                 ["starts-with", "$Content-Type", "image/"],      // more tolerant
                 ["content-length-range", 0, 5 * 1024 * 1024],    // <= 5MB
@@ -53,12 +56,12 @@ router.post("/avatar/presign", async (req, res) => {
             Expires: 60, // seconds
         });
 
-        res.json({ url, fields, key });
+        return res.json({ url, fields, key });
     } catch (err) {
         console.error("[avatar/presign] error:", err);
-        res.status(500).send(err?.message || "Failed to create presigned post");
+        return res.status(500).send(err?.message || "Failed to create presigned post");
     }
-}); 
+});
 
 /**
  * Signup (after upload succeeds)

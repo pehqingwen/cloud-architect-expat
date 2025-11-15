@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+        - name: api
+          image: myapp-api:local
+          imagePullPolicy: IfNotPresent 
+          ports:
+            - containerPort: 3000
+          env:
+            - name: PORT
+              value: "3000"
+            - name: FRONTEND_ORIGIN
+              value: "http://myapp.local"  # adjust if you don’t use Ingress/host entry
+          envFrom:
+            - secretRef:
+                name: api-env
+livenessProbe:
+  httpGet: { path: /health, port: 3000 }
+  initialDelaySeconds: 10
+  periodSeconds: 10
+readinessProbe:
+  httpGet: { path: /health, port: 3000 }
+  initialDelaySeconds: 5
+  periodSeconds: 5

@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
 import authRouter from "./routes/auth.js";
+import ordersRouter from "./routes/orders.js";
 import { S3Client, ListObjectsV2Command, PutObjectCommand } from "@aws-sdk/client-s3";
 import Order from "./models/Order.js";
 import User from "./models/User.js";
@@ -12,6 +13,7 @@ dotenv.config();
 const app = express();
 app.use(cors());
 app.use(express.json()); // Parse JSON from frontend 
+app.use(express.urlencoded({ extended: true }));
 
 // MongoDB connection 
 const encodedPass = encodeURIComponent(process.env.MONGO_PASS);
@@ -37,13 +39,14 @@ const corsOptions = {
 };
 
 app.use(cors({
-    origin: FRONTEND_ORIGIN,      // MUST be specific, not '*'
-    credentials: true,            // allow cookies/credentials
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"]
+  origin: FRONTEND_ORIGIN,
+  credentials: true,
+  methods: ["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
+  allowedHeaders: ["Content-Type","Authorization"]
 }));
 
 app.use(cors(corsOptions));
+app.use("/api", ordersRouter);
 
 app.use(
     cors({
@@ -55,6 +58,15 @@ app.use(
         credentials: true,
     })
 );
+
+app.use((err, req, res, next) => {
+  console.error(err); 
+  const status =
+    err.name === "ValidationError" ? 400 :
+    err.name === "MongoServerError" ? 500 :
+    500;
+  res.status(status).json({ error: err.message });
+});
 
 const s3 = new S3Client({
     region: process.env.AWS_REGION,
@@ -121,7 +133,7 @@ if (!Number.isFinite(PORT) || PORT <= 0) {
     throw new Error(`Invalid PORT: ${envPort}`);
 }
 
-app.get("/healthz", (_req, res) => res.status(200).send("ok"));
+app.get("/health", (_req, res) => res.status(200).send("ok"));
 app.listen(PORT, "0.0.0.0", () => console.log(`API on ${PORT}`));
 
 app.get("/api/healthz", (_req, res) => res.status(200).send("ok"));
