@@ -33,6 +33,7 @@ server/node_modules/
 server/.env
 **/.env
 .env.api
+docker.env
 
 # build output
 dist/

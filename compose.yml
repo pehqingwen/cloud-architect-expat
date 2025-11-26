@@ -1,18 +1,20 @@
 services:
   api:
-    build: ./server
-    env_file:
-      - .env.api  
-    environment:
-      PORT: 3000
-      FRONTEND_ORIGIN: http://localhost:8080
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: "/api"      # 👈 add this
+    container_name: api
     ports:
       - "3000:3000"
+    env_file:
+      - docker.env               # where MONGODB_URI, AWS_* live
 
-  web:
-    build:
-      context: ./client
-      args:
-        VITE_API_URL: http://localhost:3000
-    ports:
-      - "8080:80" # <-- publish container port 80 to host 8080
+  # web:
+  #   build:
+  #     context: ./client
+  #     args:
+  #       VITE_API_URL: http://localhost:3000
+  #   ports:
+  #     - "8080:80" # <-- publish container port 80 to host 8080

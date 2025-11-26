@@ -7,6 +7,8 @@ import ordersRouter from "./routes/orders.js";
 import { S3Client, ListObjectsV2Command, PutObjectCommand } from "@aws-sdk/client-s3";
 import Order from "./models/Order.js";
 import User from "./models/User.js";
+import path from "path";
+import { fileURLToPath } from "url";
 
 dotenv.config();
 
@@ -15,10 +17,18 @@ app.use(cors());
 app.use(express.json()); // Parse JSON from frontend 
 app.use(express.urlencoded({ extended: true }));
 
+// auth routes
+app.use("/api", authRouter);
+
+// orders routes
+app.use("/api", ordersRouter);  // gives you POST /api/orders
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 // MongoDB connection 
 const encodedPass = encodeURIComponent(process.env.MONGO_PASS);
-const uri = `mongodb+srv://pehqingwen:SqueakyFluffy01@cluster0.cawhvhn.mongodb.net/myOrders?retryWrites=true&w=majority`;
-
+const uri = process.env.MONGODB_URI;
 mongoose.connect(uri)
     .then(() => console.log("✅ Connected to MongoDB Atlas"))
     .catch((err) => console.error("❌ MongoDB connection error:", err));
@@ -39,10 +49,10 @@ const corsOptions = {
 };
 
 app.use(cors({
-  origin: FRONTEND_ORIGIN,
-  credentials: true,
-  methods: ["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
-  allowedHeaders: ["Content-Type","Authorization"]
+    origin: FRONTEND_ORIGIN,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
 app.use(cors(corsOptions));
@@ -60,12 +70,12 @@ app.use(
 );
 
 app.use((err, req, res, next) => {
-  console.error(err); 
-  const status =
-    err.name === "ValidationError" ? 400 :
-    err.name === "MongoServerError" ? 500 :
-    500;
-  res.status(status).json({ error: err.message });
+    console.error(err);
+    const status =
+        err.name === "ValidationError" ? 400 :
+            err.name === "MongoServerError" ? 500 :
+                500;
+    res.status(status).json({ error: err.message });
 });
 
 const s3 = new S3Client({
@@ -132,6 +142,14 @@ const PORT = (envPort && Number(envPort)) || 3000;
 if (!Number.isFinite(PORT) || PORT <= 0) {
     throw new Error(`Invalid PORT: ${envPort}`);
 }
+
+// Serve static files from the built client
+app.use(express.static(path.join(__dirname, "public")));
+
+// SPA fallback: send index.html for any non-API route
+app.get(/.*/, (req, res) => {
+    res.sendFile(path.join(__dirname, "public", "index.html"));
+});
 
 app.get("/health", (_req, res) => res.status(200).send("ok"));
 app.listen(PORT, "0.0.0.0", () => console.log(`API on ${PORT}`));

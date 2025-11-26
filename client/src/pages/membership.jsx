@@ -77,10 +77,12 @@ export default function Membership() {
       // 2) Upload directly to S3 (fields first, then Content-Type, then file)
       const s3Form = new FormData();
       Object.entries(fields).forEach(([k, v]) => s3Form.append(k, v));
-      s3Form.append("Content-Type", file.type);
+      // s3Form.append("Content-Type", file.type);
       s3Form.append("file", file);
 
       const s3Res = await fetch(url, { method: "POST", body: s3Form });
+      console.log("Presigned S3 url:", url);
+
       if (!s3Res.ok) {
         const txt = await s3Res.text().catch(() => "");
         throw new Error(`Upload to S3 failed (${s3Res.status}): ${txt || "no body"}`);

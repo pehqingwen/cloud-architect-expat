@@ -42,7 +42,7 @@ router.post("/auth/avatar/presign", async (req, res, next) => {
 
         // Create a short-lived presigned POST with constraints
         const { url, fields } = await createPresignedPost(s3, {
-            Bucket: process.env.S3_BUCKET,
+            Bucket: process.env.AWS_S3_BUCKET,
             Key: key,
             Fields: {
                 key,
@@ -50,11 +50,13 @@ router.post("/auth/avatar/presign", async (req, res, next) => {
             },
             Conditions: [
                 ["starts-with", "$Content-Type", "image/"],      // more tolerant
-                ["content-length-range", 0, 5 * 1024 * 1024],    // <= 5MB
+                ["content-length-range", 0, 10485760],    // <= 5MB
                 ["starts-with", "$key", "avatars/"]              // enforce prefix
             ],
-            Expires: 60, // seconds
+            Expires: 600, // seconds
         });
+
+        console.log("[presign] url:", url);
 
         return res.json({ url, fields, key });
     } catch (err) {
@@ -91,30 +93,5 @@ router.post("/signup", async (req, res) => {
         res.status(500).json({ message: "Error creating membership." });
     }
 });
-
-
-router.post("/orders", async (req, res) => {
-    try {
-        const { name, email, address, bedding, feed } = req.body || {};
-
-        if (!name || !email || !address) {
-            return res.status(400).json({ message: "name, email, and address are required" });
-        }
-
-        await Order.create({
-            name,
-            email: email.toLowerCase(),
-            address,
-            bedding,
-            feed,
-        });
-
-        res.status(201).json({ message: "New order created successfully!" });
-    } catch (err) {
-        console.error("[orders] creation error:", err);
-        res.status(500).json({ message: "Error creating order." });
-    }
-});
-
 
 export default router;
