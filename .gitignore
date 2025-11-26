@@ -30,10 +30,12 @@ server/node_modules/
 
 # environment files
 .env
+*.env
 server/.env
 **/.env
 .env.api
 docker.env
+client/.env
 
 # build output
 dist/

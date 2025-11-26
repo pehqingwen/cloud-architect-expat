@@ -1,5 +1,5 @@
 # .github/workflows/build.yml
-name: Build & Push Images
+name: Build & Push App Image
 
 on:
   push:
@@ -10,10 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write     # needed to push to GHCR
-    strategy:
-      matrix:
-        svc: [ "server", "client" ]   # must match your folder names
+      packages: write   # needed to push to GHCR
 
     steps:
       - uses: actions/checkout@v4
@@ -26,18 +23,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Optional: set a short SHA for prettier tags
+      # Optional: short SHA for nice tags
       - name: Set SHORT_SHA
         run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
 
-      # Build & push in one go (uses Dockerfile in each folder)
-      - name: Build and Push ${{ matrix.svc }}
+      # Build & push single combined image from root Dockerfile
+      - name: Build and Push app image
         uses: docker/build-push-action@v6
         with:
-          context: ./${{ matrix.svc }}     # ./server or ./client
+          context: .                 # 👈 repo root
+          file: ./Dockerfile         # 👈 combined Dockerfile at root
           push: true
           tags: |
-            ghcr.io/pehqingwen/cloud-architect-expat:${{ matrix.svc }}-sha-${{ github.sha }}
-            ghcr.io/pehqingwen/cloud-architect-expat:${{ matrix.svc }}-sha-${{ env.SHORT_SHA }}
-          # If your Dockerfile isn't named 'Dockerfile' or isn't in that folder:
-          # file: ./${{ matrix.svc }}/Dockerfile
+            ghcr.io/pehqingwen/cloud-architect-expat:app-sha-${{ github.sha }}
+            ghcr.io/pehqingwen/cloud-architect-expat:app-sha-${{ env.SHORT_SHA }}
