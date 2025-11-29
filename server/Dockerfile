@@ -1,15 +1,22 @@
-# server/Dockerfile
-FROM node:20-alpine AS deps
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --omit=dev
+# ---- Backend Dockerfile ----
+FROM node:20-alpine
 
-FROM node:20-alpine AS runner
-ENV NODE_ENV=production
+# Create app directory
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+
+# Install dependencies
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Copy the rest of your backend code
 COPY . .
-# Optional: if you transpile TS -> JS, add a build stage and copy /dist instead.
+
+# Set environment (we'll override with real values in K8s later)
+ENV NODE_ENV=production
+# ENV PORT=3000
+
+# Your backend listens on this port (change if yours is different)
 EXPOSE 3000
-HEALTHCHECK --interval=30s --timeout=3s CMD wget -qO- http://127.0.0.1:3000/healthz || exit 1
+
+# Replace server.js with your actual entry file (e.g. index.js/app.js)
 CMD ["node", "server.js"]

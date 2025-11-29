@@ -1,3 +1,4 @@
+import express from "express";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import User from "../models/User.js";
@@ -6,7 +7,7 @@ import { S3Client } from "@aws-sdk/client-s3";
 import { Router } from "express";
 import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
 
-const router = Router();
+const router = express.Router();
 
 /**
  * Client flow (recommended):
@@ -15,16 +16,17 @@ const router = Router();
  */
 
 // S3 client reads region & creds from env
-const s3 = new S3Client({ region: process.env.AWS_REGION });
+const s3 = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
 
 /**
  * Get a presigned POST so the browser can upload the avatar directly to S3.
  * Body: { email, fileName, contentType }
  * Returns: { url, fields, key }
  */
-router.post("/auth/avatar/presign", async (req, res, next) => {
+
+router.post("/avatar/presign", async (req, res) => {
     try {
-        const { email, fileName, contentType } = req.body || {};
+        const { email, fileName, contentType } = req.body;
         if (!email || !fileName || !contentType) {
             return res.status(400).json({ message: "email, fileName, contentType are required" });
         }
@@ -41,27 +43,28 @@ router.post("/auth/avatar/presign", async (req, res, next) => {
         const key = `avatars/${encodeURIComponent(email)}/${Date.now()}-${fileName}`;
 
         // Create a short-lived presigned POST with constraints
-        const { url, fields } = await createPresignedPost(s3, {
+        const presignedPost = await createPresignedPost(s3, {
             Bucket: process.env.AWS_S3_BUCKET,
             Key: key,
-            Fields: {
-                key,
-                "Content-Type": contentType,
-            },
+            // Fields: {
+            //     key,
+            //     "Content-Type": contentType,
+            // },
             Conditions: [
-                ["starts-with", "$Content-Type", "image/"],      // more tolerant
-                ["content-length-range", 0, 10485760],    // <= 5MB
-                ["starts-with", "$key", "avatars/"]              // enforce prefix
+                ['content-length-range', 0, 10_000_000],       // up to ~10MB
+                ['starts-with', '$Content-Type', ''],          // allow any content type
             ],
-            Expires: 600, // seconds
+            Expires: 60, // seconds
         });
 
-        console.log("[presign] url:", url);
-
-        return res.json({ url, fields, key });
+        return res.json({
+            url: presignedPost.url,
+            fields: presignedPost.fields,
+            key,
+        });
     } catch (err) {
-        console.error("[avatar/presign] error:", err);
-        return res.status(500).send(err?.message || "Failed to create presigned post");
+        console.error('Error in /api/auth/avatar/presign:', err);
+        return res.status(500).json({ message: "Failed to create presigned post" });
     }
 });
 

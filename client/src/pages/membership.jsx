@@ -8,6 +8,8 @@ if (!API_BASE) {
   );
 }
 
+const base = import.meta.env.VITE_API_URL;
+
 export default function Membership() {
   const fileInputRef = useRef(null);
   const [preview, setPreview] = useState(null);
@@ -58,7 +60,7 @@ export default function Membership() {
 
     try {
       // 1) Get presigned POST from your server
-      const presignRes = await fetch("/api/auth/avatar/presign", {
+      const presignRes = await fetch(`${base}/auth/avatar/presign`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -90,7 +92,7 @@ export default function Membership() {
       }
 
       // 3) Finish signup with JSON (no file here)
-      const res = await fetch("/api/auth/signup", {
+      const res = await fetch(`${base}/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -112,89 +114,89 @@ export default function Membership() {
   };
 
 
-return (
-  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-100 to-purple-100 p-6">
-    <form
-      onSubmit={handleSubmit}
-      className="bg-white/90 backdrop-blur-lg p-8 rounded-[2rem] shadow-xl w-full max-w-md border border-white/40 flex flex-col items-center"
-    >
-      <h1 className="text-3xl font-extrabold mb-6 text-center bg-gradient-to-r from-indigo-500 to-blue-600 bg-clip-text text-transparent">
-        Create Your Account
-      </h1>
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-100 to-purple-100 p-6">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white/90 backdrop-blur-lg p-8 rounded-[2rem] shadow-xl w-full max-w-md border border-white/40 flex flex-col items-center"
+      >
+        <h1 className="text-3xl font-extrabold mb-6 text-center bg-gradient-to-r from-indigo-500 to-blue-600 bg-clip-text text-transparent">
+          Create Your Account
+        </h1>
 
-      {/* Spherical, centered avatar */}
-      <div className="mb-5 flex flex-col items-center">
-        <div className="aspect-square w-40 rounded-full overflow-hidden"
-          onClick={handlePick}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && handlePick()}
-          aria-label="Upload profile picture"
-          title="Upload profile picture"
-        >
-          {preview ? (
-            <img
-              src={preview}
-              alt="Profile preview"
-              className="circular w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-600">
-              Upload
-            </div>
-          )}
+        {/* Spherical, centered avatar */}
+        <div className="mb-5 flex flex-col items-center">
+          <div className="aspect-square w-40 rounded-full overflow-hidden"
+            onClick={handlePick}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && handlePick()}
+            aria-label="Upload profile picture"
+            title="Upload profile picture"
+          >
+            {preview ? (
+              <img
+                src={preview}
+                alt="Profile preview"
+                className="circular w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-600">
+                Upload
+              </div>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={handlePick}
+            className="mt-3 px-4 py-2 rounded-full shadow-sm border border-gray-300 hover:shadow-md"
+          >
+            Choose Photo
+          </button>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFile}
+          />
         </div>
 
-        <button
-          type="button"
-          onClick={handlePick}
-          className="mt-3 px-4 py-2 rounded-full shadow-sm border border-gray-300 hover:shadow-md"
-        >
-          Choose Photo
-        </button>
-
+        {/* Email */}
         <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handleFile}
+          type="text"
+          name="email"
+          placeholder="Email"
+          value={form.email}
+          onChange={handleChange}
+          required
+          className="mb-4 w-full rounded-full border border-gray-300 p-3 shadow-sm outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500"
         />
-      </div>
 
-      {/* Email */}
-      <input
-        type="text"
-        name="email"
-        placeholder="Email"
-        value={form.email}
-        onChange={handleChange}
-        required
-        className="mb-4 w-full rounded-full border border-gray-300 p-3 shadow-sm outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500"
-      />
+        {/* Password */}
+        <input
+          type="password"
+          name="password"
+          placeholder="Password"
+          value={form.password}
+          onChange={handleChange}
+          required
+          className="mb-6 w-full rounded-full border border-gray-300 p-3 shadow-sm outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500"
+        />
 
-      {/* Password */}
-      <input
-        type="password"
-        name="password"
-        placeholder="Password"
-        value={form.password}
-        onChange={handleChange}
-        required
-        className="mb-6 w-full rounded-full border border-gray-300 p-3 shadow-sm outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500"
-      />
+        {errors && (
+          <p className="mb-4 text-sm text-red-600 text-center">{errors}</p>
+        )}
 
-      {errors && (
-        <p className="mb-4 text-sm text-red-600 text-center">{errors}</p>
-      )}
-
-      <button
-        type="submit"
-        className="w-full py-3 bg-gradient-to-r from-indigo-500 to-blue-600 text-white font-semibold rounded-full shadow-md hover:scale-105 transition-transform duration-200"
-      >
-        Sign Up
-      </button>
-    </form>
-  </div>
-);
-  }
+        <button
+          type="submit"
+          className="w-full py-3 bg-gradient-to-r from-indigo-500 to-blue-600 text-white font-semibold rounded-full shadow-md hover:scale-105 transition-transform duration-200"
+        >
+          Sign Up
+        </button>
+      </form>
+    </div>
+  );
+}

@@ -13,40 +13,38 @@ import { fileURLToPath } from "url";
 dotenv.config();
 
 const app = express();
-app.use(cors());
-app.use(express.json()); // Parse JSON from frontend 
+
+const allowedOrigins = [
+    'http://a82930ec009464c38b192c011d45e901-1704323071.us-east-1.elb.amazonaws.com', // frontend LB
+    'http://localhost:5173', // optional, for local dev
+];
+
+const corsOptions = {
+    origin: allowedOrigins,
+    credentials: true,
+}; 
+
+app.use(cors(corsOptions));
+
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // auth routes
-app.use("/api", authRouter);
+app.use("/api/auth", authRouter);
 
 // orders routes
-app.use("/api", ordersRouter);  // gives you POST /api/orders
+app.use("/api", ordersRouter);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // MongoDB connection 
-const encodedPass = encodeURIComponent(process.env.MONGO_PASS);
 const uri = process.env.MONGODB_URI;
 mongoose.connect(uri)
     .then(() => console.log("✅ Connected to MongoDB Atlas"))
     .catch((err) => console.error("❌ MongoDB connection error:", err));
 
-
-const allowed = [
-    "http://localhost:5173",
-    process.env.FRONTEND_ORIGIN, // e.g., https://your-frontend.vercel.app
-].filter(Boolean);
-
-
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "http://localhost:8080";
-const corsOptions = {
-    origin: FRONTEND_ORIGIN,
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-};
 
 app.use(cors({
     origin: FRONTEND_ORIGIN,
@@ -55,19 +53,15 @@ app.use(cors({
     allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
-app.use(cors(corsOptions));
-app.use("/api", ordersRouter);
-
-app.use(
-    cors({
-        origin: (origin, cb) => {
-            // allow tools like curl/postman (no origin)
-            if (!origin) return cb(null, true);
-            cb(null, allowed.includes(origin));
-        },
-        credentials: true,
-    })
-);
+app.use(cors({
+    origin: function (origin, callback) {
+        // allow REST tools or same-origin with no origin header
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin)) return callback(null, true);
+        return callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+}));
 
 app.use((err, req, res, next) => {
     console.error(err);
@@ -94,9 +88,6 @@ app.post("/api/orders", async (req, res) => {
     }
 });
 
-// mount feature routes
-app.use("/api/auth", authRouter);
-
 app.get("/db/ping", async (req, res) => {
     try {
         await mongoose.connection.db.admin().ping();
@@ -109,7 +100,7 @@ app.get("/db/ping", async (req, res) => {
 
 app.get("/s3/ping", async (req, res) => {
     try {
-        const bucket = process.env.S3_BUCKET;
+        const bucket = process.env.AWS_S3_BUCKET;
         // 1) write a tiny test object (optional but proves PutObject)
         const key = `healthchecks/${Date.now()}.txt`;
         await s3.send(new PutObjectCommand({

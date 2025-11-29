@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 function App() {
 
   const navigate = useNavigate();
+  const base = import.meta.env.VITE_API_URL;
 
   const [formData, setFormData] = useState({
     name: "",
@@ -36,7 +37,7 @@ function App() {
     };
 
     try {
-      const res = await fetch("/api/orders", {
+      const res = await fetch(`${base}/orders`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         credentials: "include",
